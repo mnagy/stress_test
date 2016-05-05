@@ -1,9 +1,20 @@
 #!/usr/bin/python3
 
+"""Generate plots from csv files.
+
+Usage: plot [options] <file>...
+
+-o FILE  Save plot to a file.
+"""
+
 import matplotlib.pyplot as plt
 # import csv
+from docopt import docopt
 import sys
 import fileinput
+
+
+args = docopt(__doc__)
 
 
 def to_mb(i):
@@ -13,11 +24,11 @@ cols = []
 title = 'No title'
 fig_name = sys.argv[1] if len(sys.argv) > 1 else 'fig.png'
 label = 'Initial'
-x = []
-y = []
 data = {}
+avg_x = []
+avg_y = {}
 # for row in csv.reader(sys.stdin):
-for line in fileinput.input():
+for line in fileinput.input(args["<file>"]):
     data.setdefault(fileinput.filename(), {
         'label': 'No label',
         'x': [],
@@ -32,8 +43,13 @@ for line in fileinput.input():
             d[k] = v
     else:
         row = line.split(',')
-        d['x'].append(int(row[0]))
-        d['y'].append(int(row[-1])/1024/1024)
+        x = int(row[0])
+        y = int(row[-1])
+        d['x'].append(x)
+        d['y'].append(y/1024/1024)
+        avg_x.append(x)
+        avg_y.setdefault(x, [])
+        avg_y[x].append(y)
         # row = [x if int(x) < 1024 else to_mb(x) for x in row]
         # cols.append(row)
         # print(",".join(row))
@@ -60,19 +76,31 @@ exp = {
     '16': '-'
 }
 
+# """
 for d in data.values():
-    if d['exp'] == '16':
-        continue
-    f = "{0}{1}{2}".format(workers[d['workers']], sleep[d['sleep']],
-                           exp[d['exp']])
+    # if d['exp'] == '16':
+    #     continue
+    # f = "{0}{1}{2}".format(workers[d['workers']], sleep[d['sleep']],
+    #                        exp[d['exp']])
+    f = "{0}{1}".format(sleep[d['sleep']], exp.get(d['exp'], '-'))
     plt.plot(d['x'], d['y'], f, label=d['label'])
+# """
 
-for i in workers.keys():
-    x = range(2, 33, 2)
-    y = [50 + 15*int(i) + 0.1*a*int(i) for a in x]
-    plt.plot(x, y, '{0}-'.format(workers[i]))
+"""
+avg = []
+for x in avg_x:
+    avg.append(sum(avg_y[x])/len(avg_y[x])/1024/1024)
+plt.plot(avg_x, avg, ".-")
+"""
+
+x = range(1, 32)
+y = [30 + 7*int(a) for a in x]
+plt.plot(x, y, '-')
 
 plt.title(title)
 # plt.legend()
-plt.show()
-# plt.savefig("/tmp/graph.png")
+
+if args["-o"]:
+    plt.savefig(args["-o"])
+else:
+    plt.show()
